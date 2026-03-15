@@ -108,21 +108,23 @@ viewof termYears = Inputs.range([1, 30], {
 ```
 
 ```{ojs}
-loanCalc = (() => {
-  const r = annualRate / 100 / 12;
-  const n = termYears * 12;
-  const monthly = r === 0
-    ? principal / n
-    : principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-  const totalPayment = monthly * n;
+// Shared loan variables — defined once, referenced by both loanCalc and amortData
+r = annualRate / 100 / 12
+n = termYears * 12
+monthlyPayment = r === 0
+  ? principal / n
+  : principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+
+loanCalc = {
+  const totalPayment = monthlyPayment * n;
   const totalInterest = totalPayment - principal;
   return {
-    monthly: monthly.toFixed(2),
+    monthly: monthlyPayment.toFixed(2),
     totalPayment: totalPayment.toFixed(2),
     totalInterest: totalInterest.toFixed(2),
     interestPct: ((totalInterest / principal) * 100).toFixed(1)
   };
-})()
+}
 
 html`<div class="stats-grid">
   <div class="stat-card">
@@ -145,30 +147,23 @@ html`<div class="stats-grid">
 ```
 
 ```{ojs}
-// Build amortization schedule data
-amortData = (() => {
-  const r = annualRate / 100 / 12;
-  const n = termYears * 12;
-  const monthly = r === 0
-    ? principal / n
-    : principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+// Build amortization schedule data using shared r, n, monthlyPayment
+amortData = {
   let balance = principal;
   const data = [];
   for (let i = 1; i <= n; i++) {
     const interest = balance * r;
-    const principalPaid = monthly - interest;
+    const principalPaid = monthlyPayment - interest;
     balance -= principalPaid;
     if (i % 12 === 0) {
       data.push({
         year: i / 12,
-        balance: Math.max(0, balance),
-        interestPaid: interest * 12,
-        principalPaid: principalPaid * 12
+        balance: Math.max(0, balance)
       });
     }
   }
   return data;
-})()
+}
 
 Plot.plot({
   title: "Remaining Balance Over Time",
@@ -266,27 +261,39 @@ This is a **live** Markdown preview.
 ```
 
 ```{ojs}
+// Escape HTML entities before applying Markdown transforms to prevent XSS
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Simple markdown to HTML converter
 function simpleMarkdown(text) {
-  return text
+  return escapeHtml(text)
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/((?:<li>[^\n]*<\/li>\n?)+)/g, '<ul>$1</ul>')
     .replace(/\n\n/g, '<br>');
 }
 
 html`<div style="
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--bs-border-color);
   border-radius: 4px;
   padding: 1rem;
   min-height: 200px;
-  background: white;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
 ">
   ${simpleMarkdown(markdownInput)}
 </div>`

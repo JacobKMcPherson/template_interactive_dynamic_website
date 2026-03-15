@@ -49,8 +49,8 @@
   font-size: 0.9rem;
 }
 
-/* Ensure Observable Plot charts are responsive */
-svg {
+/* Ensure Observable Plot charts are responsive (scoped to OJS output cells only) */
+.observablehq svg {
   max-width: 100%;
   height: auto;
 }
